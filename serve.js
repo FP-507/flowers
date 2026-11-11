@@ -18,7 +18,10 @@ http.createServer((req, res) => {
   if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end("No encontrado"); }
-    res.writeHead(200, { "Content-Type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
     res.end(data);
   });
 }).listen(PORT, () => console.log(`Galería lista en http://localhost:${PORT}`));

@@ -1068,9 +1068,15 @@
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const t = now / 1000;
-    update(dt, t);
-    render(t);
     requestAnimationFrame(loop);
+    // Si algo falla en un cuadro, el juego sigue en vez de congelarse
+    try {
+      update(dt, t);
+      render(t);
+    } catch (err) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (!loop.warned) { loop.warned = true; console.error("Error en el juego:", err); }
+    }
   }
   requestAnimationFrame(loop);
 })();

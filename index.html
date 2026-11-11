@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Para ti ♥</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="stage">
+      <canvas id="game"></canvas>
+
+      <div id="hud" class="hidden">
+        <div id="counter"><span class="heart">♥</span> <span id="count">0</span>/<span id="total">0</span></div>
+        <div class="hud-buttons">
+          <button id="btn-mute" aria-label="Sonido">♪</button>
+          <button id="btn-full" aria-label="Pantalla completa">⛶</button>
+        </div>
+      </div>
+
+      <div id="dialog" class="hidden">
+        <canvas id="portrait" width="84" height="78"></canvas>
+        <div class="dialog-body">
+          <div class="dialog-name" id="dialog-name"></div>
+          <div class="dialog-text" id="dialog-text"></div>
+        </div>
+        <div class="dialog-next" id="dialog-next">▼</div>
+      </div>
+
+      <div id="room-title">
+        <div id="room-title-num"></div>
+        <div id="room-title-name"></div>
+      </div>
+
+      <div id="fade"></div>
+    </div>
+
+    <div id="touch-controls">
+      <div class="dpad">
+        <button data-key="up" class="d-up">▲</button>
+        <button data-key="left" class="d-left">◀</button>
+        <button data-key="right" class="d-right">▶</button>
+        <button data-key="down" class="d-down">▼</button>
+      </div>
+      <button id="t-action">♥</button>
+    </div>
+  </div>
+
+  <div id="memory" class="hidden">
+    <div class="memory-card">
+      <button class="memory-close" id="memory-close" aria-label="Cerrar">✕</button>
+      <div class="memory-photo"><img id="memory-img" alt=""></div>
+      <div class="memory-info">
+        <div class="memory-date" id="memory-date"></div>
+        <h2 id="memory-title"></h2>
+        <p id="memory-text"></p>
+        <div class="memory-hint" id="memory-hint"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="title-screen">
+    <div class="hearts-bg" id="hearts-bg"></div>
+    <div class="title-content">
+      <div class="title-small" id="title-small"></div>
+      <h1 id="title-main"></h1>
+      <div class="title-name" id="title-name"></div>
+      <button id="btn-start">♥ Entrar</button>
+      <div class="title-hint" id="title-hint"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

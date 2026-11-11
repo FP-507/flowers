@@ -1,0 +1,1 @@
+﻿Pon aqui tus fotos (01.jpg, 02.jpg, ...) y edita js/config.js

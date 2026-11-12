@@ -1155,6 +1155,8 @@
   function buildTicketTitle(animated) {
     const el = document.getElementById("ticket-title");
     el.innerHTML = "";
+    const title = (CV.ticket && CV.ticket.title) || "";
+    el.style.fontSize = Math.min(4.6, 30 / Math.max(1, title.length)) + "em";
     [...((CV.ticket && CV.ticket.title) || "")].forEach((ch, i) => {
       const s = document.createElement("span");
       s.textContent = ch;

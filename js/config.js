@@ -106,7 +106,7 @@ const CONFIG = {
     // El boleto
     ticket: {
       top: "Admite a una",
-      title: "CARAVAL",
+      title: "Invitación",             // el nombre del libro no aparece en ningún lado
       line1: "Entrada válida solo para",
       side: "Edición de cumpleaños",
       number: "Nº 001",

@@ -77,6 +77,25 @@ const Sfx = (() => {
     [84, 88, 91, 96].forEach((m, i) => note(now() + i * 0.05, mtof(m), 0.4, { vol: 0.035 }));
   }
 
+  function found() {
+    if (!ac) return;
+    [79, 83, 86, 91].forEach((m, i) => note(now() + i * 0.08, mtof(m), 0.5, { type: "triangle", vol: 0.05 }));
+    note(now() + 0.34, mtof(98), 0.6, { vol: 0.03 });
+  }
+  function fanfare() {
+    if (!ac) return;
+    const seq = [[67, 0, 0.18], [72, 0.16, 0.18], [76, 0.32, 0.18], [79, 0.48, 0.5], [76, 0.72, 0.16], [79, 0.86, 0.9]];
+    seq.forEach(([m, d, l]) => {
+      note(now() + d, mtof(m), l, { type: "square", vol: 0.025 });
+      note(now() + d, mtof(m + 12), l, { vol: 0.03 });
+    });
+    [48, 55, 60].forEach((m) => note(now() + 0.86, mtof(m), 1.1, { type: "triangle", vol: 0.04 }));
+  }
+  function paper() {
+    if (!ac) return;
+    for (let i = 0; i < 4; i++) note(now() + i * 0.03, 1800 + Math.random() * 900, 0.04, { type: "sawtooth", vol: 0.008 });
+  }
+
   // ---- música: cajita musical original (I–V–vi–IV en Do mayor) ----
   const BPM = 80;
   const E8 = 60 / BPM / 2;
@@ -160,5 +179,5 @@ const Sfx = (() => {
     else { ac.resume(); if (musicEl) musicEl.play().catch(() => {}); }
   });
 
-  return { ensure, blip, step, select, chime, close, sparkle, door, startMusic, setMuted, isMuted: () => muted };
+  return { ensure, blip, step, select, chime, close, sparkle, door, found, fanfare, paper, startMusic, setMuted, isMuted: () => muted };
 })();

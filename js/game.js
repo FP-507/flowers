@@ -97,7 +97,17 @@
       for (let p = 0; p < 15; p++) if (g[p] === "1") c.fillRect(x + i * 4 + (p % 3), y + ((p / 3) | 0), 1, 1);
     }
   }
+  function pixelTextScaled(c, s, x, y, col, sc) {
+    s = normText(s);
+    x = Math.round(x - (s.length * 4 * sc - sc) / 2);
+    c.fillStyle = col;
+    for (let i = 0; i < s.length; i++) {
+      const g = GLYPHS[s[i]] || GLYPHS["?"];
+      for (let p = 0; p < 15; p++) if (g[p] === "1") c.fillRect(x + (i * 4 + (p % 3)) * sc, y + ((p / 3) | 0) * sc, sc, sc);
+    }
+  }
   const HEART7 = [".XX.XX.", "XXXXXXX", "XXXXXXX", ".XXXXX.", "..XXX..", "...X..."];
+  const STAR5 = ["..X..", ".XXX.", "XXXXX", ".XXX.", ".X.X."];
   const HEART5 = [".X.X.", "XXXXX", ".XXX.", "..X.."];
   function drawPattern(c, pat, x, y, col) {
     c.fillStyle = col;
@@ -134,6 +144,48 @@
     for (let i = 6; i < 40; i += 8) R(x, i, 3, 1, 1, theme.carpetDk);
     return c;
   }
+
+  function makeDrum() {
+    const [c, x] = mk(22, 22);
+    for (let i = 0; i < 22; i += 4) { R(x, i, 4, 2, 16, "#b02030"); R(x, i + 2, 4, 2, 16, "#ecdcb8"); }
+    R(x, 2, 0, 18, 1, "#7a5a24");
+    R(x, 0, 1, 22, 3, PAL.gold); R(x, 1, 1, 20, 1, PAL.goldHi);
+    R(x, 0, 4, 22, 2, PAL.gold); R(x, 0, 18, 22, 2, PAL.gold); R(x, 0, 20, 22, 2, PAL.goldDk);
+    R(x, 7, 8, 9, 8, "#2a0a12");
+    drawPattern(x, STAR5, 9, 9, PAL.goldHi);
+    R(x, 17, 6, 5, 12, "rgba(0,0,0,0.22)");
+    R(x, 0, 6, 2, 12, "rgba(255,255,255,0.12)");
+    return c;
+  }
+
+  // ---------- Objetos de las pistas ----------
+  const ITEM_PAL = { K: "#140a10", G: "#e8c066", g: "#a8782e", W: "#fff3c4", D: "#2a2238", H: "#54486e", R: "#c02a3a", r: "#7a1424" };
+  const ITEMS = {
+    hat: [
+      "...KKKKKK...", "..KDDDDDHK..", "..KDDDDDHK..", "..KDDDDDHK..", "..KRRRRRRK..",
+      "..KrrrrrrK..", ".KKDDDDDDKK.", "KDDDDDDDDHDK", ".KKKKKKKKKK.",
+    ],
+    mask: [
+      "KR..........K", "KRK.......KGK", "KGGKKKKKKKGGK", "KGKKGWGGGKKGK",
+      "KGKKGGKGgKKgK", ".KGGgK.KgggK.", "..KKK...KKK..",
+    ],
+    key: [
+      ".KKK........", "KGWGKKKKKKKK", "KG.GGGGWGGGK", "KGgGKKKKGKgK", ".KKK...KKKK.",
+    ],
+  };
+  const ITEM_ORDER = ["hat", "mask", "key"];
+  function makeItem(rows, sc = 1) {
+    const [c, x] = mk(rows[0].length * sc, rows.length * sc);
+    rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const col = ITEM_PAL[row[i]];
+        if (col) R(x, i * sc, j * sc, sc, sc, col);
+      }
+    });
+    return c;
+  }
+  const itemSprites = {};
+  for (const k in ITEMS) itemSprites[k] = makeItem(ITEMS[k]);
 
   // ---------- Salas y recuerdos ----------
   let memCounter = 0;
@@ -179,6 +231,50 @@
 
   const roomDefs = CONFIG.rooms && CONFIG.rooms.length ? CONFIG.rooms : [{ name: "", theme: "rosa", memories: CONFIG.memories || [] }];
   const rooms = roomDefs.map((d, i) => buildRoom(d, i, roomDefs.length));
+  const galleryCount = rooms.length;
+
+  // ---------- La carpa final ----------
+  const CV = CONFIG.caraval || null;
+  const TENT_W = 340;
+  const TENT_SPOT = { x: 210, y: 108 };
+  const TENT_THEME = { wall: "#8e1420", stripe: "#7a0f1c", dot: "#a8202e", carpet: "#7e1a2e", carpetDk: "#5a1020", carpetHi: "#962840" };
+  let tentIdx = -1;
+  if (CV) {
+    const tent = {
+      def: { name: CV.roomName || "", intro: [] }, ri: rooms.length, theme: TENT_THEME,
+      isTent: true, isFirst: false, isLast: false, memories: [], doorX: -9999, width: TENT_W,
+      objects: [], solids: [], decor: [], lights: [], bulbs: [],
+      canvas: null, cctx: null, dirty: true, introDone: true,
+      marquee: { x: TENT_SPOT.x - 37, y: 21, w: 74, h: 21 },
+    };
+    const drum = makeDrum();
+    for (const dx of [96, 318]) {
+      tent.objects.push({ sprite: drum, x: dx - 11, y: 112 - 22, baseY: 112 });
+      tent.solids.push({ x1: dx - 11, x2: dx + 11, y1: 104, y2: 112 });
+    }
+    // guirnalda de focos entre los postes
+    const anchors = [0, 130, 290, TENT_W];
+    for (let a = 0; a < anchors.length - 1; a++) {
+      const x0 = anchors[a], x1 = anchors[a + 1];
+      for (let x = x0 + 5; x < x1 - 2; x += 9) {
+        const u = (x - x0) / (x1 - x0);
+        tent.bulbs.push({ x, y: Math.round(20 + 12 * 4 * u * (1 - u)), c: tent.bulbs.length % 4 });
+      }
+    }
+    tentIdx = rooms.length;
+    rooms.push(tent);
+  }
+
+  // Una pista escondida en cada sala (aparecen después de hablar en la carpa)
+  const clues = CV ? rooms.slice(0, galleryCount).map((r, i) => {
+    const n = r.memories.length;
+    const g = n >= 3 ? 2 : 0;
+    const x = n >= 2 ? r.memories[g].x + SPACING / 2 : r.doorX - 70;
+    const kind = ITEM_ORDER[i % ITEM_ORDER.length];
+    return { room: i, x, y: 140, kind, sprite: itemSprites[kind], found: false };
+  }) : [];
+  let hunt = 0;          // 0: aún no llega a la carpa · 1: buscando · 2: tiene todas · 3: ya tiene la carta
+  let foundCount = 0;
 
   function setOrientation(m, iw, ih) {
     const r = iw / ih;
@@ -477,6 +573,114 @@
     room.dirty = false;
   }
 
+  function renderTent(room) {
+    if (!room.canvas) [room.canvas, room.cctx] = mk(room.width, WH);
+    const c = room.cctx, Wd = room.width;
+    const r = rng(777);
+    c.clearRect(0, 0, Wd, WH);
+    // lona a rayas
+    for (let x = 0; x < Wd; x += 12) {
+      R(c, x, 0, 6, 84, "#9a1b2c"); R(c, x + 6, 0, 6, 84, "#e8d6b0");
+      R(c, x + 5, 0, 1, 84, "#6e1020"); R(c, x + 11, 0, 1, 84, "#c4b08a");
+      R(c, x + 1, 0, 1, 84, "#b02838"); R(c, x + 7, 0, 1, 84, "#f6e8c8");
+    }
+    const sh = c.createLinearGradient(0, 0, 0, 84);
+    sh.addColorStop(0, "rgba(14,2,8,0.85)");
+    sh.addColorStop(0.5, "rgba(14,2,8,0.25)");
+    sh.addColorStop(1, "rgba(14,2,8,0.45)");
+    c.fillStyle = sh;
+    c.fillRect(0, 0, Wd, 84);
+    // cenefa con ondas y borlas
+    R(c, 0, 0, Wd, 10, "#7a0f1c");
+    R(c, 0, 3, Wd, 1, "#a8202e");
+    R(c, 0, 9, Wd, 1, PAL.gold);
+    for (let x = 0; x < Wd; x += 16) {
+      for (let yy = 0; yy < 8; yy++) {
+        const hw = Math.floor(Math.sqrt(64 - yy * yy));
+        R(c, x + 8 - hw, 10 + yy, hw * 2, 1, yy === 7 ? PAL.gold : "#7a0f1c");
+        R(c, x + 8 - hw, 10 + yy, 1, 1, PAL.gold);
+        R(c, x + 7 + hw, 10 + yy, 1, 1, PAL.gold);
+      }
+      R(c, x, 10, 1, 5, PAL.goldDk);
+      R(c, x - 1, 15, 3, 3, PAL.gold);
+      R(c, x, 15, 1, 1, PAL.goldHi);
+    }
+    // cable de los focos (los focos se dibujan animados)
+    c.fillStyle = "#1a0a0c";
+    let prev = null;
+    for (const b of room.bulbs) {
+      if (prev && b.x - prev.x < 12) {
+        const steps = b.x - prev.x;
+        for (let s = 0; s <= steps; s++) c.fillRect(prev.x + s, Math.round(prev.y + ((b.y - prev.y) * s) / steps) - 2, 1, 1);
+      }
+      prev = b;
+    }
+    // postes
+    for (const px of [130, 290]) {
+      R(c, px - 2, 0, 5, 84, "#4a2a1a");
+      R(c, px - 1, 0, 1, 84, "#7a4a2e");
+      for (let y = 22; y < 84; y += 18) { R(c, px - 3, y, 7, 2, PAL.gold); R(c, px - 3, y, 7, 1, PAL.goldHi); }
+    }
+    // escenario: fondo de estrellas
+    const sx0 = TENT_SPOT.x - 46, sx1 = TENT_SPOT.x + 46;
+    R(c, sx0, 44, sx1 - sx0, 40, "#160a24");
+    for (let i = 0; i < 26; i++) R(c, sx0 + 6 + ((r() * (sx1 - sx0 - 12)) | 0), 46 + ((r() * 34) | 0), 1, 1, r() > 0.6 ? "#fff3c4" : "#9a8ac8");
+    drawPattern(c, STAR5, TENT_SPOT.x - 2, 56, PAL.goldHi);
+    // telones
+    for (const s of [-1, 1]) {
+      for (let y = 44; y < 84; y++) {
+        const tie = y > 64 && y < 68;
+        const w = tie ? 6 : y < 64 ? 20 - Math.floor((y - 44) / 2.2) : 8 + Math.floor((y - 68) / 1.6);
+        const x0 = s < 0 ? sx0 : sx1 - w;
+        R(c, x0, y, w, 1, "#a01c2e");
+        for (let f = 3; f < w; f += 4) R(c, s < 0 ? x0 + f : x0 + w - 1 - f, y, 1, 1, "#6e1020");
+        R(c, s < 0 ? x0 + w - 1 : x0, y, 1, 1, "#d04050");
+      }
+      R(c, s < 0 ? sx0 + 3 : sx1 - 9, 64, 6, 4, PAL.gold);
+    }
+    // letrero luminoso (las letras se dibujan animadas)
+    const m = room.marquee;
+    R(c, m.x - 2, m.y - 2, m.w + 4, m.h + 4, "#2a1006");
+    R(c, m.x - 1, m.y - 1, m.w + 2, m.h + 2, PAL.gold);
+    R(c, m.x, m.y, m.w, m.h, "#3a0a14");
+    R(c, m.x + 3, m.y + 3, m.w - 6, m.h - 6, "#240610");
+    R(c, m.x + m.w / 2 - 1, m.y + m.h + 2, 2, 6, PAL.goldDk);
+    R(c, sx0 - 2, 42, sx1 - sx0 + 4, 3, PAL.gold);
+    R(c, sx0 - 2, 42, sx1 - sx0 + 4, 1, PAL.goldHi);
+    // moldura y zócalo
+    R(c, 0, 84, Wd, 1, "#6b4127");
+    R(c, 0, 85, Wd, 4, "#2a140c");
+    // tarima del escenario
+    R(c, sx0 - 4, 82, sx1 - sx0 + 8, 3, "#7a4a2e");
+    R(c, sx0 - 4, 82, sx1 - sx0 + 8, 1, "#9a6a44");
+    R(c, sx0 - 4, 85, sx1 - sx0 + 8, 6, "#8e1420");
+    for (let x = sx0 - 4; x < sx1 + 4; x += 6) { R(c, x, 91, 6, 1, "#8e1420"); R(c, x + 1, 92, 4, 1, "#8e1420"); R(c, x + 2, 93, 2, 1, PAL.gold); }
+    R(c, sx0 - 4, 85, sx1 - sx0 + 8, 1, PAL.gold);
+    // piso
+    R(c, 0, FLOOR_TOP, Wd, LEDGE_Y - FLOOR_TOP, "#4a2c22");
+    for (let y = FLOOR_TOP, row = 0; y < LEDGE_Y; y += 6, row++) {
+      R(c, 0, y, Wd, 1, "#3a2018");
+      for (let x = (row * 17) % 41; x < Wd; x += 41 + ((row * 7) % 13)) R(c, x, y, 1, 6, "#3a2018");
+    }
+    for (let i = 0; i < Wd; i++) R(c, (r() * Wd) | 0, FLOOR_TOP + ((r() * (LEDGE_Y - FLOOR_TOP)) | 0), 2, 1, "#5a382a");
+    R(c, sx0 - 4, 85, sx1 - sx0 + 8, 1, PAL.gold);
+    for (let i = 0; i < 4; i++) R(c, 0, FLOOR_TOP + i, Wd, 1, `rgba(10,4,6,${0.4 - i * 0.1})`);
+    // tarima por encima de la sombra del piso
+    for (let x = sx0 - 4; x < sx1 + 4; x += 6) { R(c, x, 89, 6, 2, "#8e1420"); R(c, x + 1, 91, 4, 1, "#8e1420"); R(c, x + 2, 92, 2, 1, PAL.gold); }
+    // alfombra con estrellas
+    const CT = 122, CB = 150;
+    R(c, 0, CT, Wd, CB - CT, "#5e0a14");
+    R(c, 0, CT, Wd, 1, PAL.gold); R(c, 0, CB - 1, Wd, 1, PAL.gold);
+    R(c, 0, CT + 2, Wd, 1, PAL.goldDk); R(c, 0, CB - 3, Wd, 1, PAL.goldDk);
+    for (let x = 8; x < Wd; x += 18) drawPattern(c, STAR5, x, ((CT + CB) >> 1) - 2, x % 36 === 8 ? PAL.gold : "#8e2a36");
+    R(c, 0, LEDGE_Y, Wd, 1, "#3a2018");
+    R(c, 0, LEDGE_Y + 1, Wd, WH - LEDGE_Y - 1, "#140a0c");
+    // entrada desde la sala anterior
+    drawPassage(c, BACK_X, "< SALA " + room.ri, room.theme, rooms[room.ri - 1].theme);
+    room.dirty = false;
+  }
+  const drawRoomCanvas = (r) => (r.isTent ? renderTent(r) : renderRoom(r));
+
   // ---------- Viñeta ----------
   const [vignette, vc] = mk(W, H);
   {
@@ -515,7 +719,28 @@
   function faceFrom(dx, dy) {
     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
   }
+  const guideHere = () => !guide.stay || room.isTent;
   function updateGuide(dt) {
+    if (guide.stay) {
+      if (!room.isTent) return;
+      const dx = guide.stay.x - guide.x, dy = guide.stay.y - guide.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 0.5) {
+        const step = Math.min(d, 52 * dt);
+        guide.x += (dx / d) * step;
+        guide.y += (dy / d) * step;
+        guide.moving = true;
+        guide.animT += dt;
+        guide.facing = faceFrom(dx, dy);
+        guide.idleT = 0;
+      } else {
+        guide.moving = false;
+        guide.animT = 0;
+        guide.idleT += dt;
+        if (guide.idleT > 0.4) guide.facing = faceFrom(player.x - guide.x, player.y - guide.y);
+      }
+      return;
+    }
     let need = FOLLOW_DIST, px = player.x, py = player.y, tx = null, ty = null;
     for (let i = trail.length - 1; i >= 0; i--) {
       const p = trail[i];
@@ -544,6 +769,7 @@
     vx: -3 + Math.random() * 2, ph: Math.random() * 6.28,
     col: ["#f2a7b8", "#e05a7a", "#ffd0dc"][Math.floor(Math.random() * 3)],
     heart: Math.random() < 0.3,
+    gold: ["#e8c066", "#f0d27a", "#e05a7a", "#fff3c4"][Math.floor(Math.random() * 4)],
   }));
 
   // ---------- Estado ----------
@@ -678,6 +904,7 @@
     state = "play";
     updateCounter();
     Sfx.close();
+    if (firstTime && !allVisitedSaid && hunt > 0 && allMemories.every((x) => x.visited)) allVisitedSaid = true;
     if (firstTime && !allVisitedSaid && allMemories.every((x) => x.visited)) {
       allVisitedSaid = true;
       setTimeout(() => { Sfx.sparkle(); dialogPlay(CONFIG.allVisited); }, 350);
@@ -712,7 +939,7 @@
   // ---------- Cambio de sala ----------
   const roomTitle = document.getElementById("room-title");
   function showRoomTitle(r) {
-    document.getElementById("room-title-num").textContent = "Sala " + (r.ri + 1);
+    document.getElementById("room-title-num").textContent = r.isTent ? CV.roomSmall || "" : "Sala " + (r.ri + 1);
     document.getElementById("room-title-name").textContent = r.def.name || "";
     roomTitle.classList.remove("show");
     void roomTitle.offsetWidth;
@@ -733,16 +960,18 @@
     setTimeout(() => {
       roomIdx = idx;
       room = rooms[idx];
-      if (room.dirty) renderRoom(room);
+      if (room.dirty) drawRoomCanvas(room);
       const doorX = arriveAtEnd ? room.doorX : BACK_X;
       player.x = doorX + (arriveAtEnd ? -2 : 2);
       player.y = MIN_Y + 10;
       player.facing = "down";
-      seedTrail(doorX, MIN_Y);
+      if (!guide.stay) seedTrail(doorX, MIN_Y);
+      else trail = [];
       snapCamera();
       fadeEl.classList.add("out");
       showRoomTitle(room);
       setTimeout(() => {
+        if (room.isTent && hunt === 0) return beginTentScene();
         const intro = room.def.intro || [];
         if (!room.introDone && intro.length) { room.introDone = true; dialogPlay(intro); }
         else state = "play";
@@ -752,7 +981,14 @@
 
   // ---------- Interacción ----------
   function nearestTarget() {
+    if (hunt >= 1) {
+      for (const cl of clues) {
+        if (cl.room === roomIdx && !cl.found && Math.abs(player.x - cl.x) < 14 && Math.abs(player.y - cl.y) < 12) return { type: "clue", cl };
+      }
+    }
+    if (room.isTent && guide.stay && hunt >= 1 && Math.hypot(player.x - guide.x, (player.y - guide.y) * 1.4) < 24) return { type: "guide" };
     if (player.y > INTERACT_MAXY) return null;
+    if (room.isTent) return Math.abs(player.x - BACK_X) < 20 ? { type: "prev" } : null;
     let best = null, bd = 1e9;
     for (const m of room.memories) {
       const d = Math.abs(player.x - m.x);
@@ -770,14 +1006,260 @@
   function useTarget(t) {
     if (!t) return;
     if (t.type === "memory") { player.facing = "up"; openMemory(t.m); }
-    else if (t.type === "end") { player.facing = "up"; dialogPlay(CONFIG.ending); }
+    else if (t.type === "end") {
+      player.facing = "up";
+      if (tentIdx >= 0) goRoom(tentIdx, false);
+      else dialogPlay(CONFIG.ending || ["Esta puerta todavía está cerrada..."]);
+    }
     else if (t.type === "next") goRoom(roomIdx + 1, false);
     else if (t.type === "prev") goRoom(roomIdx - 1, true);
+    else if (t.type === "clue") openClue(t.cl);
+    else if (t.type === "guide") talkToGuide();
   }
+
+  // ---------- La carpa: escena, pistas y carta ----------
+  const clueTotal = clues.length;
+  document.getElementById("clue-total").textContent = clueTotal;
+  const cluesEl = document.getElementById("clues");
+  const clueCountEl = document.getElementById("clue-count");
+
+  function beginTentScene() {
+    state = "cutscene";
+    guide.stay = { ...TENT_SPOT };
+  }
+  function cutsceneUpdate() {
+    if (state !== "cutscene" || guide.moving || Math.hypot(guide.x - TENT_SPOT.x, guide.y - TENT_SPOT.y) > 0.6) return;
+    player.facing = faceFrom(guide.x - player.x, guide.y - player.y);
+    guide.facing = faceFrom(player.x - guide.x, player.y - guide.y);
+    Sfx.sparkle();
+    dialogPlay(CV.intro || [], startHunt);
+  }
+  function startHunt() {
+    hunt = 1;
+    cluesEl.classList.remove("hidden");
+    Sfx.found();
+  }
+
+  function talkToGuide() {
+    player.facing = faceFrom(guide.x - player.x, guide.y - player.y);
+    guide.facing = faceFrom(player.x - guide.x, player.y - guide.y);
+    guide.idleT = 0;
+    if (hunt === 1) {
+      const left = clueTotal - foundCount;
+      const lines = left === 1 && CV.reminderOne ? CV.reminderOne : (CV.reminder || []).map((l) => l.replace("{n}", left + " pistas"));
+      dialogPlay(lines);
+    } else if (hunt === 2) {
+      dialogPlay(CV.finale || [], () => openLetter(false));
+    }
+  }
+
+  // --- tarjeta de pista ---
+  const clueUI = {
+    el: document.getElementById("clue"),
+    icon: document.getElementById("clue-icon"),
+    num: document.getElementById("clue-num"),
+    slots: document.getElementById("clue-slots"),
+    text: document.getElementById("clue-text"),
+    hint: document.getElementById("clue-hint"),
+    openedAt: 0,
+  };
+  clueUI.hint.textContent = isTouch ? "Toca para seguir buscando" : "Presiona E para seguir buscando";
+  const iconCtx = clueUI.icon.getContext("2d");
+
+  function openClue(cl) {
+    cl.found = true;
+    foundCount++;
+    state = "clue";
+    player.facing = "down";
+    Sfx.found();
+    // icono grande
+    const rows = ITEMS[cl.kind];
+    const sc = Math.floor(Math.min(104 / rows[0].length, 88 / rows.length));
+    const big = makeItem(rows, sc);
+    iconCtx.imageSmoothingEnabled = false;
+    iconCtx.clearRect(0, 0, 104, 88);
+    iconCtx.drawImage(big, Math.round((104 - big.width) / 2), Math.round((88 - big.height) / 2));
+    clueUI.num.textContent = "PISTA " + foundCount + " DE " + clueTotal;
+    // fila con los objetos reunidos hasta ahora
+    clueUI.slots.innerHTML = "";
+    clues.forEach((c2) => {
+      const s = document.createElement("span");
+      if (c2.found) {
+        const ic = makeItem(ITEMS[c2.kind], 3);
+        s.appendChild(ic);
+        if (c2 === cl) s.className = "new";
+      } else s.textContent = "?";
+      clueUI.slots.appendChild(s);
+    });
+    clueUI.text.textContent = (CV.clues || [])[foundCount - 1] || "";
+    clueCountEl.textContent = foundCount;
+    cluesEl.classList.remove("bump");
+    void cluesEl.offsetWidth;
+    cluesEl.classList.add("bump");
+    clueUI.el.classList.remove("hidden");
+    clueUI.openedAt = performance.now();
+  }
+  function closeClue() {
+    if (performance.now() - clueUI.openedAt < 500) return;
+    clueUI.el.classList.add("hidden");
+    state = "play";
+    Sfx.close();
+    if (foundCount >= clueTotal && hunt === 1) {
+      hunt = 2;
+      setTimeout(() => { Sfx.sparkle(); dialogPlay(CV.allFound || []); }, 350);
+    }
+  }
+  clueUI.el.addEventListener("click", closeClue);
+
+  // --- carta y boleto ---
+  const letterUI = {
+    el: document.getElementById("letter"),
+    env: document.getElementById("envelope"),
+    envHint: document.getElementById("env-hint"),
+    paper: document.getElementById("letter-paper"),
+    to: document.getElementById("letter-to"),
+    body: document.getElementById("letter-body"),
+    from: document.getElementById("letter-from"),
+    ticket: document.getElementById("ticket"),
+    hint: document.getElementById("letter-hint"),
+    btn: document.getElementById("btn-letter"),
+    phase: "closed", timers: [], words: [],
+  };
+  letterUI.envHint.textContent = isTouch ? "Toca el sobre para abrirlo" : "Haz clic o presiona E para abrirlo";
+  letterUI.hint.textContent = isTouch ? "Toca ✕ para volver" : "Presiona E o ✕ para volver";
+  if (CV) {
+    const tk = CV.ticket || {};
+    document.getElementById("ticket-top").textContent = tk.top || "";
+    document.getElementById("ticket-line").textContent = tk.line1 || "";
+    document.getElementById("ticket-name").textContent = CONFIG.herName;
+    document.getElementById("ticket-side").textContent = tk.side || "";
+    document.getElementById("ticket-number").textContent = tk.number || "";
+    letterUI.to.textContent = CV.letterTo || "";
+    letterUI.from.textContent = "— " + (CV.letterFrom || CONFIG.guideName);
+    // el cuerpo de la carta palabra por palabra
+    (CV.letter || "").split(/(\s+)/).forEach((tok) => {
+      if (!tok) return;
+      if (/^\s+$/.test(tok)) letterUI.body.appendChild(document.createTextNode(tok));
+      else {
+        const s = document.createElement("span");
+        s.className = "w";
+        s.textContent = tok;
+        letterUI.body.appendChild(s);
+        letterUI.words.push(s);
+      }
+    });
+  }
+  const later = (fn, ms) => letterUI.timers.push(setTimeout(fn, ms));
+  function clearLetterTimers() { letterUI.timers.forEach(clearTimeout); letterUI.timers = []; }
+
+  function buildTicketTitle(animated) {
+    const el = document.getElementById("ticket-title");
+    el.innerHTML = "";
+    [...((CV.ticket && CV.ticket.title) || "")].forEach((ch, i) => {
+      const s = document.createElement("span");
+      s.textContent = ch;
+      s.style.animationDelay = animated ? 0.5 + i * 0.12 + "s" : "0s";
+      if (!animated) s.style.animationDuration = "0.01s";
+      el.appendChild(s);
+    });
+  }
+
+  function openLetter(replay) {
+    clearLetterTimers();
+    state = "letter";
+    letterUI.el.classList.remove("hidden");
+    letterUI.el.querySelector(".letter-scroll").scrollTop = 0;
+    if (replay) {
+      letterUI.env.classList.add("hidden");
+      letterUI.paper.classList.remove("hidden");
+      letterUI.words.forEach((w) => w.classList.add("on"));
+      letterUI.from.classList.add("on");
+      buildTicketTitle(false);
+      letterUI.ticket.classList.remove("hidden");
+      letterUI.hint.classList.remove("hidden");
+      letterUI.phase = "done";
+      Sfx.chime();
+      return;
+    }
+    letterUI.phase = "closed";
+    letterUI.env.classList.remove("hidden", "open");
+    letterUI.paper.classList.add("hidden");
+    letterUI.ticket.classList.add("hidden");
+    letterUI.hint.classList.add("hidden");
+    letterUI.words.forEach((w) => w.classList.remove("on"));
+    letterUI.from.classList.remove("on");
+    Sfx.chime();
+  }
+
+  function openEnvelope() {
+    if (letterUI.phase !== "closed") return;
+    letterUI.phase = "reading";
+    letterUI.env.classList.add("open");
+    Sfx.paper();
+    later(() => {
+      letterUI.env.classList.add("hidden");
+      letterUI.paper.classList.remove("hidden");
+      Sfx.paper();
+      let t = 700;
+      letterUI.words.forEach((w) => {
+        later(() => { w.classList.add("on"); if (Math.random() < 0.5) Sfx.blip(); }, t);
+        const txt = w.textContent;
+        t += /[.!?♥:]$/.test(txt) ? 420 : /,$/.test(txt) ? 220 : 110;
+        if (w.nextSibling && /\n/.test(w.nextSibling.textContent || "")) t += 380;
+      });
+      later(() => letterUI.from.classList.add("on"), t + 200);
+      later(showTicket, t + 1300);
+    }, 750);
+  }
+
+  function showTicket() {
+    clearLetterTimers();
+    letterUI.words.forEach((w) => w.classList.add("on"));
+    letterUI.from.classList.add("on");
+    letterUI.paper.classList.remove("hidden");
+    letterUI.env.classList.add("hidden");
+    letterUI.phase = "done";
+    buildTicketTitle(true);
+    letterUI.ticket.classList.remove("hidden");
+    Sfx.fanfare();
+    setTimeout(() => letterUI.ticket.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+    setTimeout(() => letterUI.hint.classList.remove("hidden"), 1600);
+  }
+
+  function letterAdvance() {
+    if (letterUI.phase === "closed") openEnvelope();
+    else if (letterUI.phase === "reading") showTicket();
+    else closeLetter();
+  }
+
+  function closeLetter() {
+    clearLetterTimers();
+    letterUI.el.classList.add("hidden");
+    state = "play";
+    Sfx.close();
+    if (hunt === 2) {
+      hunt = 3;
+      guide.stay = null;
+      seedTrail(guide.x, guide.y);
+      cluesEl.classList.add("hidden");
+      letterUI.btn.classList.remove("hidden");
+      setTimeout(() => dialogPlay(CV.after || []), 400);
+    }
+  }
+  letterUI.env.addEventListener("click", openEnvelope);
+  letterUI.paper.addEventListener("click", () => { if (letterUI.phase === "reading") showTicket(); });
+  document.getElementById("letter-close").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (letterUI.phase !== "done") showTicket();
+    else closeLetter();
+  });
+  letterUI.btn.addEventListener("click", () => { if (state === "play") openLetter(true); });
 
   function onAction() {
     if (state === "dialog") return dialogAdvance();
     if (state === "memory") return memAdvance();
+    if (state === "clue") return closeClue();
+    if (state === "letter") return letterAdvance();
     if (state === "title") return startGame();
     if (state !== "play") return;
     useTarget(nearestTarget());
@@ -797,6 +1279,8 @@
       if (!e.repeat) onAction();
     }
     if (e.key === "Escape" && state === "memory") closeMemory();
+    if (e.key === "Escape" && state === "clue") closeClue();
+    if (e.key === "Escape" && state === "letter") { if (letterUI.phase === "done") closeLetter(); else showTicket(); }
   });
   window.addEventListener("keyup", (e) => { if (KEYMAP[e.key]) keys[KEYMAP[e.key]] = false; });
   window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
@@ -888,13 +1372,14 @@
       // entrar a otra sala caminando hacia el arco
       if (keys.up && player.y <= MIN_Y + 0.5) {
         const tg = nearestTarget();
-        if (tg && (tg.type === "next" || tg.type === "prev")) useTarget(tg);
+        if (tg && (tg.type === "next" || tg.type === "prev" || tg.type === "end")) useTarget(tg);
       }
     } else {
       player.animT = 0;
       player.stepT = 0.05;
     }
     updateGuide(dt);
+    cutsceneUpdate();
 
     const tx = clamp(player.x - W / 2, 0, room.width - W);
     const ty = clamp(player.y - 100, 0, WH - H);
@@ -952,15 +1437,71 @@
     const dirSet = ch.facing === "up" ? set.up : ch.facing === "down" ? set.down : set.side;
     let name = "idle", bob = 0;
     if (ch.moving) {
-      const f = Math.floor(ch.animT * 8) % 4;
+      const f = ((Math.floor(ch.animT * 8) % 4) + 4) % 4;
       name = ["walk1", "idle", "walk2", "idle"][f];
       bob = f % 2 === 1 ? -1 : 0;
     } else if (((t + phase) % 3.2) < 0.13) name = "blink";
-    ctx.drawImage(dirSet[name][ch.facing === "left" ? "L" : "R"], px - 7, py - 22 + bob);
+    const frame = (dirSet && (dirSet[name] || dirSet.idle)) || set.down.idle;
+    ctx.drawImage(frame[ch.facing === "left" ? "L" : "R"], px - 7, py - 22 + bob);
+  }
+
+  const BULB_COLS = ["255,214,120", "255,120,130", "255,244,210", "255,170,90"];
+  function drawTentLights(t) {
+    const tent = room;
+    const finale = hunt >= 2;
+    // focos de la guirnalda
+    for (const b of tent.bulbs) {
+      const on = finale ? Math.floor(t * 6 + b.x / 9) % 3 !== 0 : Math.sin(t * 2.2 + b.x * 0.7) > -0.6;
+      const col = BULB_COLS[b.c];
+      if (on) glow(b.x, b.y, 6, col, 0.45);
+      ctx.fillStyle = on ? `rgb(${col})` : "#4a2a24";
+      ctx.fillRect(b.x - 1, b.y - 1, 2, 3);
+    }
+    // foco sobre el escenario
+    drawCone(TENT_SPOT.x, 14, hunt >= 1 ? 1.2 : 0.8);
+    // letrero: se llena con los objetos encontrados
+    const m = tent.marquee;
+    for (let i = 0; i < m.w; i += 5) {
+      for (const [bx, by] of [[m.x + i + 2, m.y - 1], [m.x + m.w - 3 - i, m.y + m.h]]) {
+        const on = finale ? Math.floor(t * 8 - i / 5) % 2 === 0 : Math.floor(t * 2 + i / 5) % 3 !== 0;
+        ctx.fillStyle = on ? "#ffe9a0" : "#7a5a24";
+        ctx.fillRect(bx, by, 1, 1);
+      }
+    }
+    const gap = 22, cy = m.y + Math.round(m.h / 2);
+    const x0 = m.x + m.w / 2 - ((clues.length - 1) * gap) / 2;
+    clues.forEach((cl, i) => {
+      const x = Math.round(x0 + i * gap);
+      if (cl.found) {
+        glow(x, cy, 9, "255,214,120", finale ? 0.4 + Math.sin(t * 4 + i) * 0.12 : 0.28);
+        ctx.drawImage(cl.sprite, Math.round(x - cl.sprite.width / 2), Math.round(cy - cl.sprite.height / 2));
+      } else {
+        pixelTextScaled(ctx, "?", x, cy - 5, Math.sin(t * 3 + i) > 0 ? "#8a6a3a" : "#5a3a1e", 2);
+      }
+    });
+  }
+
+  function drawClue(cl, t, isNear) {
+    const s = cl.sprite;
+    const bob = Math.round(Math.sin(t * 3 + cl.room) * 1.5);
+    glow(cl.x, cl.y - 6, isNear ? 18 : 14, "255,214,120", (isNear ? 0.55 : 0.35) + Math.sin(t * 4) * 0.08);
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(cl.x - 4, cl.y - 1, 8, 2);
+    ctx.drawImage(s, Math.round(cl.x - s.width / 2), cl.y - s.height - 5 + bob);
+    // destellos
+    ctx.fillStyle = "#fffbe0";
+    for (let k = 0; k < 3; k++) {
+      const a = t * 1.7 + k * 2.1 + cl.room;
+      if (Math.sin(t * 5 + k * 2) > 0.3) {
+        const px = Math.round(cl.x + Math.cos(a) * 10), py = Math.round(cl.y - 9 + Math.sin(a) * 7);
+        ctx.fillRect(px, py - 1, 1, 3);
+        ctx.fillRect(px - 1, py, 3, 1);
+      }
+    }
   }
 
   function render(t) {
-    if (room.dirty) renderRoom(room);
+    if (room.dirty) drawRoomCanvas(room);
     const cx = Math.round(camX), cy = Math.round(camY);
     const inView = (x, pad = 60) => x > cx - pad && x < cx + W + pad;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -984,9 +1525,10 @@
     }
     for (const l of room.lights) if (inView(l.x, 40)) glow(l.x, l.y, 22 + Math.sin(t * 9 + l.x) * 1.5, "255,200,120", 0.35);
     if (room.isLast && inView(room.doorX)) {
-      const a = allVisitedSaid ? 0.28 + Math.sin(t * 2.5) * 0.08 : 0.1;
-      glow(room.doorX, 70, 46, "255,170,200", a);
+      const a = allVisitedSaid || hunt >= 2 ? 0.28 + Math.sin(t * 2.5) * 0.08 : 0.1;
+      glow(room.doorX, 70, 46, hunt >= 2 ? "255,200,110" : "255,170,200", a);
     }
+    if (room.isTent) drawTentLights(t);
 
     for (const m of room.memories) {
       if (!inView(m.x)) continue;
@@ -1017,11 +1559,14 @@
     }
 
     const drawList = room.objects.filter((o) => inView(o.x));
-    drawList.push({ kind: "her", baseY: player.y + 0.01 }, { kind: "him", baseY: guide.y });
+    drawList.push({ kind: "her", baseY: player.y + 0.01 });
+    if (guideHere()) drawList.push({ kind: "him", baseY: guide.y });
+    if (hunt >= 1) for (const cl of clues) if (cl.room === roomIdx && !cl.found && inView(cl.x)) drawList.push({ kind: "clue", cl, baseY: cl.y - 4 });
     drawList.sort((a, b) => a.baseY - b.baseY);
     for (const o of drawList) {
       if (o.kind === "her") drawCharacter(SPR.her, player, t, 0);
       else if (o.kind === "him") drawCharacter(SPR.him, guide, t, 1.4);
+      else if (o.kind === "clue") drawClue(o.cl, t, near && near.cl === o.cl);
       else {
         ctx.fillStyle = "rgba(0,0,0,0.25)";
         ctx.fillRect(o.x + 2, o.baseY - 2, o.sprite.width - 4, 2);
@@ -1037,8 +1582,9 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     for (const p of petals) {
       ctx.globalAlpha = 0.55;
-      if (p.heart) drawPattern(ctx, HEART5, Math.round(p.x), Math.round(p.y), p.col);
-      else { ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 1); ctx.fillRect(Math.round(p.x) + 1, Math.round(p.y) + 1, 1, 1); }
+      const col = room.isTent ? p.gold : p.col;
+      if (p.heart) drawPattern(ctx, room.isTent ? STAR5 : HEART5, Math.round(p.x), Math.round(p.y), col);
+      else { ctx.fillStyle = col; ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 1); ctx.fillRect(Math.round(p.x) + 1, Math.round(p.y) + 1, 1, 1); }
       ctx.globalAlpha = 1;
     }
     ctx.drawImage(vignette, 0, 0);
@@ -1059,13 +1605,24 @@
   window.addEventListener("resize", resize);
   resize();
 
+  // Atajos de prueba (solo con ?debug en la dirección)
+  if (/[?&]debug/.test(location.search)) {
+    window.__dbg = {
+      go: (i) => goRoom(i, false),
+      tp: (x, y) => { player.x = x; player.y = y; if (!guide.stay) seedTrail(x - 15, y); snapCamera(); },
+      hunt0: () => { guide.stay = { ...TENT_SPOT }; guide.x = TENT_SPOT.x; guide.y = TENT_SPOT.y; startHunt(); },
+      frame: () => { const t = performance.now() / 1000; update(0.016, t); render(t); },
+      clues, get state() { return state; }, get hunt() { return hunt; }, guide, player,
+    };
+  }
+
   // ---------- Bucle ----------
   loadImages();
   updateCounter();
   snapCamera();
   let last = performance.now();
   function loop(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const dt = clamp((now - last) / 1000, 0, 0.05);
     last = now;
     const t = now / 1000;
     requestAnimationFrame(loop);

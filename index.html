@@ -7,8 +7,8 @@
   <title>Para ti ♥</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
   <div id="app">
@@ -16,8 +16,12 @@
       <canvas id="game"></canvas>
 
       <div id="hud" class="hidden">
-        <div id="counter"><span class="heart">♥</span> <span id="count">0</span>/<span id="total">0</span></div>
+        <div class="hud-counters">
+          <div id="counter"><span class="heart">♥</span> <span id="count">0</span>/<span id="total">0</span></div>
+          <div id="clues" class="hidden"><span class="star">✦</span> <span id="clue-count">0</span>/<span id="clue-total">3</span></div>
+        </div>
         <div class="hud-buttons">
+          <button id="btn-letter" class="hidden" aria-label="Ver la carta">✉</button>
           <button id="btn-mute" aria-label="Sonido">♪</button>
           <button id="btn-full" aria-label="Pantalla completa">⛶</button>
         </div>
@@ -64,6 +68,50 @@
     </div>
   </div>
 
+  <div id="clue" class="hidden">
+    <div class="clue-card">
+      <canvas id="clue-icon" width="104" height="88"></canvas>
+      <div class="clue-num" id="clue-num"></div>
+      <div class="clue-slots" id="clue-slots"></div>
+      <p class="clue-text" id="clue-text"></p>
+      <div class="memory-hint" id="clue-hint"></div>
+    </div>
+  </div>
+
+  <div id="letter" class="hidden">
+    <button class="memory-close" id="letter-close" aria-label="Cerrar">✕</button>
+    <div class="letter-scroll">
+      <div class="envelope" id="envelope">
+        <div class="env-back"></div>
+        <div class="env-flap"></div>
+        <div class="env-seal">♥</div>
+        <div class="env-hint" id="env-hint"></div>
+      </div>
+      <div class="letter-paper hidden" id="letter-paper">
+        <div class="letter-to" id="letter-to"></div>
+        <div class="letter-body" id="letter-body"></div>
+        <div class="letter-from" id="letter-from"></div>
+      </div>
+      <div class="ticket hidden" id="ticket">
+        <div class="ticket-main">
+          <div class="ticket-side" id="ticket-side"></div>
+          <div class="ticket-center">
+            <div class="ticket-top"><span class="sun">✹</span> <span id="ticket-top"></span> <span class="sun">✹</span></div>
+            <div class="ticket-title" id="ticket-title"></div>
+            <div class="ticket-line" id="ticket-line"></div>
+            <div class="ticket-name" id="ticket-name"></div>
+          </div>
+        </div>
+        <div class="ticket-stub">
+          <div class="ticket-sun">✹</div>
+          <div class="ticket-barcode"></div>
+          <div class="ticket-number" id="ticket-number"></div>
+        </div>
+      </div>
+      <div class="letter-hint memory-hint hidden" id="letter-hint"></div>
+    </div>
+  </div>
+
   <div id="title-screen">
     <div class="hearts-bg" id="hearts-bg"></div>
     <div class="title-content">
@@ -75,9 +123,9 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=3"></script>
-  <script src="js/sprites.js?v=3"></script>
-  <script src="js/audio.js?v=3"></script>
-  <script src="js/game.js?v=3"></script>
+  <script src="js/config.js?v=4"></script>
+  <script src="js/sprites.js?v=4"></script>
+  <script src="js/audio.js?v=4"></script>
+  <script src="js/game.js?v=4"></script>
 </body>
 </html>

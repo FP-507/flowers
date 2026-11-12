@@ -1131,7 +1131,7 @@
     const tk = CV.ticket || {};
     document.getElementById("ticket-top").textContent = tk.top || "";
     document.getElementById("ticket-line").textContent = tk.line1 || "";
-    document.getElementById("ticket-name").textContent = CONFIG.herName;
+    document.getElementById("ticket-name").textContent = tk.name || CONFIG.herName;
     document.getElementById("ticket-side").textContent = tk.side || "";
     document.getElementById("ticket-number").textContent = tk.number || "";
     letterUI.to.textContent = CV.letterTo || "";

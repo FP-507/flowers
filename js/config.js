@@ -108,6 +108,7 @@ const CONFIG = {
       top: "Admite a una",
       title: "Invitación",             // el nombre del libro no aparece en ningún lado
       line1: "Entrada válida solo para",
+      name: "Estefani Flores",
       side: "Edición de cumpleaños",
       number: "Nº 001",
     },
